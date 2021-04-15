@@ -96,14 +96,10 @@ def create_sync_tasks(config, state, catalog):
     client = SentryClient(auth)
     sync = SentrySync(client, state)
 
-    # selected_stream_ids = get_selected_streams(catalog)
-    # sync_tasks = (sync.sync(stream.tap_stream_id, stream.schema)
-    #               for stream in catalog.streams
-                #   if stream.tap_stream_id in selected_stream_ids)
-
-    sync_tasks = (sync.sync(stream['tap_stream_id'], stream['schema'])
-        for stream in catalog['streams'])
-    
+    selected_stream_ids = get_selected_streams(catalog)
+    sync_tasks = (sync.sync(stream.tap_stream_id, stream.schema)
+            for stream in catalog.streams
+            if stream.tap_stream_id in selected_stream_ids)
 
     return asyncio.gather(*sync_tasks)
 
