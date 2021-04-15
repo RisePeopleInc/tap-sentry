@@ -20,7 +20,7 @@ setup(
       """,
       packages=["tap_sentry"],
       package_data = {
-            "schemas": ["tap_sentry/schemas/*.json"]
+            "": ["tap_sentry/schemas/*.json"]
       },
       include_package_data=True,
 )
