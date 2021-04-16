@@ -56,7 +56,7 @@
     "assignedTo":{
       "type":[
         "null",
-        "string"
+        "object"
       ]
     },
     "logger":{
