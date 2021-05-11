@@ -15,6 +15,9 @@ import pendulum
 from singer.bookmarks import write_bookmark, get_bookmark
 from pendulum import datetime, period
 
+import dateutil.parser
+from dateutil import tz
+
 LOGGER = singer.get_logger()
 class SentryAuthentication(requests.auth.AuthBase):
     def __init__(self, api_token: str):
@@ -67,6 +70,28 @@ class SentryClient:
             issues += response.json()
         return issues
 
+    def activity(self, state):
+        bookmark = dateutil.parser.parse(get_bookmark(state, 'activity', 'start')).replace(tzinfo=tz.gettz('UTC'))
+        response = self._get("organizations/rise-people/activity/")
+        activities = self._filter_activities(response.json(), bookmark)
+
+        if not activities:
+            return activities
+
+        url = response.url
+        while (response.links is not None and response.links.__len__() >0  and response.links['next']['results'] == 'true'):
+            url = response.links['next']['url']
+            response = self.session.get(url)
+            new_activities = self._filter_activities(response.json(), bookmark)
+            if not new_activities:
+                break
+            else:
+                activities += new_activities
+
+        return activities
+
+    def _filter_activities(self, activities, bookmark):
+        return [activity for activity in activities if dateutil.parser.parse(activity['dateCreated']) >= bookmark]
 
     def events(self, project_id, state):
         try:
@@ -129,6 +154,7 @@ class SentrySync:
         """Issues per project."""
         stream = "issues"
         loop = asyncio.get_event_loop()
+        issues_synced = []
 
         singer.write_schema(stream, schema.to_dict(), ["id"])
         extraction_time = singer.utils.now()
@@ -137,9 +163,21 @@ class SentrySync:
                 issues = await loop.run_in_executor(None, self.client.issues, project['slug'], self.state)
                 if (issues):
                     for issue in issues:
+                        issues_synced.append(issue['id'])
                         singer.write_record(stream, issue)
 
         self.state = singer.write_bookmark(self.state, 'issues', 'start', singer.utils.strftime(extraction_time))
+
+        activities = await loop.run_in_executor(None, self.client.activity, self.state)
+        if activities:
+            issue_activities = [activity for activity in activities if activity['issue']]
+            for activity in issue_activities:
+                issue = activity['issue']
+                if issue['id'] not in issues_synced:
+                    issues_synced.append(issue['id'])
+                    singer.write_record(stream, issue)
+
+        self.state = singer.write_bookmark(self.state, 'activity', 'start', singer.utils.strftime(extraction_time))
 
     async def sync_projects(self, schema):
         """Issues per project."""

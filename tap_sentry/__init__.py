@@ -131,8 +131,9 @@ def main():
         config = args.config
         state ={
             "bookmarks": {
-               "issues": {"start": config["start_date"]},
-                "events": {"start": config["start_date"]}
+               "issues":   {"start": config["start_date"]},
+               "activity": {"start": config["start_date"]},
+               "events":   {"start": config["start_date"]}
             }
         }
         state.update(args.state)
