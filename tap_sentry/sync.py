@@ -42,7 +42,6 @@ class SentryClient:
         return self._session
 
     def _get(self, path, params=None):
-        #url = urljoin(self._base_url, path)
         url = self._base_url + path
         response = self.session.get(url, params=params)
         response.raise_for_status()
@@ -57,7 +56,7 @@ class SentryClient:
         bookmark = get_bookmark(state, "issues", "start")
         query = f"projects/rise-people/{project_id}/issues/"
         if bookmark:
-            date_filter = urllib.parse.quote("event.timestamp:>=" + bookmark)
+            date_filter = urllib.parse.quote("lastSeen:>=" + bookmark)
             query += "?query=" + date_filter
         response = self._get(query)
         issues = response.json()
