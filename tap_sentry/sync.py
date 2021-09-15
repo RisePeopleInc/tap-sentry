@@ -11,6 +11,8 @@ from urllib.parse import urljoin
 import pytz
 import singer
 import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 import pendulum
 from singer.bookmarks import write_bookmark, get_bookmark
 from pendulum import datetime, period
@@ -41,6 +43,13 @@ class SentryClient:
             self._session = requests.Session()
             self._session.auth = self._auth
             self._session.headers.update({"Accept": "application/json"})
+
+            retries = Retry(total=5,
+                            backoff_factor=0.1,
+                            status_forcelist=[ 429, 500, 502, 503, 504 ],
+                            respect_retry_after_header=True)
+
+            self._session.mount('https://', HTTPAdapter(max_retries=retries))
 
         return self._session
 
